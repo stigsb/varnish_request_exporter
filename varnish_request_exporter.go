@@ -55,7 +55,7 @@ func main() {
 		log.Fatal(err)
 	}
 	scanner := bufio.NewScanner(cmdReader)
-	re := regexp.MustCompile(`/[0-9]+/`)
+	re := regexp.MustCompile(`(/[0-9]+/|/\d+$)`)
 
 	// Setup metrics
 	varnishMessages := prometheus.NewCounter(prometheus.CounterOpts{
