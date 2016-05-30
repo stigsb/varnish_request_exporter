@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
+	"strings"
 	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,12 +34,18 @@ const (
 	namespace = "varnish_request"
 )
 
+type path_mapping struct {
+	Pattern     *regexp.Regexp
+	Replacement string
+}
+
 func main() {
 	// TODO: add support for multiple Varnish instances (-S)
 	var (
 		listenAddress = flag.String("port", ":9147", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("metricsurl", "/metrics", "Path under which to expose metrics.")
-		varnishHost   = flag.String("host", "localhost", "Virtual host to look for")
+		httpHost   = flag.String("host", "localhost", "Virtual host to look for")
+		mappings      = flag.String("path-mappings", "", "Path mappings formatted like this: 'regexp->replace regex2->replace2'")
 	)
 	flag.Parse()
 
@@ -48,14 +55,18 @@ func main() {
 
 	// Set up 'varnishncsa' pipe
 	cmdName := "varnishncsa"
-	cmdArgs := []string{ "-F", "time:%D method=\"%m\" status=%s path=\"%U\"", "-q", "ReqHeader eq \"" + *varnishHost + "\""}
+	cmdArgs := []string{ "-F", "time:%D method=\"%m\" status=%s path=\"%U\"", "-q", "ReqHeader eq \"" + *httpHost + "\""}
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal(err)
 	}
 	scanner := bufio.NewScanner(cmdReader)
-	re := regexp.MustCompile(`(/[0-9]+/|/\d+$)`)
+
+	path_mappings, err := parsePathMappings(*mappings)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Setup metrics
 	varnishMessages := prometheus.NewCounter(prometheus.CounterOpts{
@@ -81,10 +92,9 @@ func main() {
 	go func() {
 		for scanner.Scan() {
 			varnishMessages.Inc()
-			// TODO: this is very crude, should be made configurable
-			content := re.ReplaceAllString(scanner.Text(), "/ID/")
+			content := scanner.Text()
 			msgs++
-			metrics, labels, err := parseMessage(content)
+			metrics, labels, err := parseMessage(content, path_mappings)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -142,4 +152,22 @@ func main() {
 
 
 	os.Exit(0)
+}
+
+func parsePathMappings(input string) (mappings []path_mapping, err error) {
+	mappings = make([]path_mapping, 0)
+	str_mappings := strings.Split(input, " ")
+	for i := range str_mappings {
+		onemapping := str_mappings[i]
+		if len(onemapping) == 0 {
+			continue
+		}
+		parts := strings.Split(onemapping, "->")
+		if len(parts) != 2 {
+			err = fmt.Errorf("URL mapping must have two elements separated by \"->\", got \"%s\"", onemapping)
+			return
+		}
+		mappings = append(mappings, path_mapping{ regexp.MustCompile(parts[0]), parts[1] })
+	}
+	return
 }

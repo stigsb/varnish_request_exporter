@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 	"text/scanner"
+
+	"github.com/prometheus/common/log"
 )
 
 type metric struct {
@@ -43,7 +45,7 @@ func (l *labelset) Equals(labels []string) bool {
 	return true
 }
 
-func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
+func parseMessage(src string, path_mappings []path_mapping) (metrics []metric, labels *labelset, err error) {
 	metrics = make([]metric, 0)
 	labels = &labelset{
 		Names:  make([]string, 0),
@@ -93,9 +95,18 @@ func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
 				if err != nil {
 					return
 				}
+				// a bit nasty to hardcode this, but we do hardcode the field name when running varnishncsa..
+				if name == "path" {
+					for i := range path_mappings {
+						mapping := path_mappings[i]
+						log.Debugf("replacing '%v' with '%s' in '%s'\n", mapping.Pattern, mapping.Replacement, value)
+						value = mapping.Pattern.ReplaceAllString(value, mapping.Replacement)
+					}
+				}
 			} else {
 				err = fmt.Errorf("Ident or String expected at %v, got %s", s.Pos(), scanner.TokenString(tok))
 			}
+
 			labels.Names = append(labels.Names, name)
 			labels.Values = append(labels.Values, value)
 		} else {
