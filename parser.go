@@ -45,7 +45,7 @@ func (l *labelset) Equals(labels []string) bool {
 	return true
 }
 
-func parseMessage(src string, path_mappings []path_mapping) (metrics []metric, labels *labelset, err error) {
+func parseMessage(src string, path_mappings []str_mapping) (metrics []metric, labels *labelset, err error) {
 	metrics = make([]metric, 0)
 	labels = &labelset{
 		Names:  make([]string, 0),
@@ -77,7 +77,7 @@ func parseMessage(src string, path_mappings []path_mapping) (metrics []metric, l
 				}
 				metrics = append(metrics, metric{
 					Name:  name,
-					Value: value / 1000.0 /* us -> ms */,
+					Value: value,
 				})
 			} else {
 				err = fmt.Errorf("Float or Int expected at %v, got %s", s.Pos(), scanner.TokenString(tok))

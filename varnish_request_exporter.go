@@ -34,7 +34,7 @@ const (
 	namespace = "varnish_request"
 )
 
-type path_mapping struct {
+type str_mapping struct {
 	Pattern     *regexp.Regexp
 	Replacement string
 }
@@ -42,10 +42,10 @@ type path_mapping struct {
 func main() {
 	// TODO: add support for multiple Varnish instances (-S)
 	var (
-		listenAddress = flag.String("port", ":9147", "Address to listen on for web interface and telemetry.")
-		metricsPath   = flag.String("metricsurl", "/metrics", "Path under which to expose metrics.")
-		httpHost   = flag.String("host", "localhost", "Virtual host to look for")
-		mappings      = flag.String("path-mappings", "", "Path mappings formatted like this: 'regexp->replace regex2->replace2'")
+		listenAddress = flag.String("http.port", ":9169", "Host/port for HTTP server")
+		metricsPath   = flag.String("http.metricsurl", "/metrics", "Prometheus metrics path")
+		httpHost      = flag.String("varnish.host", "", "Virtual host to look for in Varnish logs (defaults to all hosts)")
+		mappings      = flag.String("varnish.path-mappings", "", "Path mappings formatted like this: 'regexp->replace regex2->replace2'")
 	)
 	flag.Parse()
 
@@ -55,7 +55,8 @@ func main() {
 
 	// Set up 'varnishncsa' pipe
 	cmdName := "varnishncsa"
-	cmdArgs := []string{ "-F", "time:%D method=\"%m\" status=%s path=\"%U\"", "-q", "ReqHeader eq \"" + *httpHost + "\""}
+	cmdArgs := buildVarnishncsaArgs(*httpHost)
+	log.Infof("Running command: %v %v\n", cmdName, cmdArgs)
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -63,7 +64,7 @@ func main() {
 	}
 	scanner := bufio.NewScanner(cmdReader)
 
-	path_mappings, err := parsePathMappings(*mappings)
+	path_mappings, err := parseMappings(*mappings)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -154,8 +155,8 @@ func main() {
 	os.Exit(0)
 }
 
-func parsePathMappings(input string) (mappings []path_mapping, err error) {
-	mappings = make([]path_mapping, 0)
+func parseMappings(input string) (mappings []str_mapping, err error) {
+	mappings = make([]str_mapping, 0)
 	str_mappings := strings.Split(input, " ")
 	for i := range str_mappings {
 		onemapping := str_mappings[i]
@@ -167,7 +168,20 @@ func parsePathMappings(input string) (mappings []path_mapping, err error) {
 			err = fmt.Errorf("URL mapping must have two elements separated by \"->\", got \"%s\"", onemapping)
 			return
 		}
-		mappings = append(mappings, path_mapping{ regexp.MustCompile(parts[0]), parts[1] })
+		mappings = append(mappings, str_mapping{ regexp.MustCompile(parts[0]), parts[1] })
+	}
+	return
+}
+
+func buildVarnishncsaArgs(httpHost string) (args []string) {
+	args = make([]string, 2, 4)
+	args = append(args, "-F")
+	if len(httpHost) == 0 {
+		args = append(args, "time:%D method=\"%m\" status=%s path=\"%U\" host=\"%{host}i\"")
+	} else {
+		args = append(args, "time:%D method=\"%m\" status=%s path=\"%U\"")
+		args = append(args, "-q")
+		args = append(args, "ReqHeader:host eq \"" + httpHost + "\"")
 	}
 	return
 }
