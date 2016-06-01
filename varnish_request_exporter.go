@@ -42,7 +42,7 @@ type str_mapping struct {
 func main() {
 	// TODO: add support for multiple Varnish instances (-S)
 	var (
-		listenAddress = flag.String("http.port", ":9169", "Host/port for HTTP server")
+		listenAddress = flag.String("http.port", ":9151", "Host/port for HTTP server")
 		metricsPath   = flag.String("http.metricsurl", "/metrics", "Prometheus metrics path")
 		httpHost      = flag.String("varnish.host", "", "Virtual host to look for in Varnish logs (defaults to all hosts)")
 		mappings      = flag.String("varnish.path-mappings", "", "Path mappings formatted like this: 'regexp->replace regex2->replace2'")
