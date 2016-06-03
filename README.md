@@ -28,6 +28,8 @@ Usage of varnishncsa_exporter:
         Virtual host to look for in Varnish logs (defaults to all hosts)
   -varnish.path-mappings string
         Path mappings formatted like this: 'regexp->replace regex2->replace2'
+  -varnish.instance string
+        Name of Varnish instance. Defaults to hostname.
 ```
 
 
