@@ -75,6 +75,10 @@ func parseMessage(src string, path_mappings []str_mapping) (metrics []metric, la
 				if err != nil {
 					return
 				}
+				if (name == "time") {
+					// varnishncsa's unit here is microseconds
+					value = value / 1000000.0
+				}
 				metrics = append(metrics, metric{
 					Name:  name,
 					Value: value,

@@ -43,7 +43,7 @@ The Prometheus metrics exported are:
 
 `varnish_request_exporter_log_parse_failure` - the number of parse errors from varnishncsa output
 
-`varnish_request_time` - histogram of request processing time in microseconds, with the following labels:
+`varnish_request_time` - histogram of request processing time in seconds, with the following labels:
  * `method` - HTTP request method
  * `status` - HTTP status code
  * `path` - HTTP request URI (normalized using [path mappings](#path-mappings), without query string)
