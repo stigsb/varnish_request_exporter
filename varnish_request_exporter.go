@@ -46,6 +46,7 @@ func main() {
 		httpHost      = flag.String("varnish.host", "", "Virtual host to look for in Varnish logs (defaults to all hosts)")
 		mappings      = flag.String("varnish.path-mappings", "", "Path mappings formatted like this: 'regexp->replace regex2->replace2'")
 		instance      = flag.String("varnish.instance", "", "Name of Varnish instance")
+		befirstbyte   = flag.Bool("varnish.firstbyte", false, "Also export metrics for backend time to first byte")
 	)
 	flag.Parse()
 
@@ -55,7 +56,7 @@ func main() {
 
 	// Set up 'varnishncsa' pipe
 	cmdName := "varnishncsa"
-	cmdArgs := buildVarnishncsaArgs(*httpHost, *instance)
+	cmdArgs := buildVarnishncsaArgs(*httpHost, *instance, *befirstbyte)
 	log.Infof("Running command: %v %v\n", cmdName, cmdArgs)
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmdReader, err := cmd.StdoutPipe()
@@ -172,13 +173,19 @@ func parseMappings(input string) (mappings []str_mapping, err error) {
 	return
 }
 
-func buildVarnishncsaArgs(httpHost string, instance string) (args []string) {
+func buildVarnishncsaArgs(httpHost string, instance string, befirstbyte bool) (args []string) {
+	format := "method=\"%m\" status=%s path=\"%U\""
+	if len(httpHost) == 0 {
+		format += " host=\"%{host}i\""
+	}
+	format += " time:%D"
+	if befirstbyte {
+		format += " time_firstbyte:%{Varnish:time_firstbyte}x"
+	}
 	args = make([]string, 0, 6)
 	args = append(args, "-F")
-	if len(httpHost) == 0 {
-		args = append(args, "time:%D method=\"%m\" status=%s path=\"%U\" host=\"%{host}i\"")
-	} else {
-		args = append(args, "time:%D method=\"%m\" status=%s path=\"%U\"")
+	args = append(args, format)
+	if len(httpHost) > 0 {
 		args = append(args, "-q")
 		args = append(args, "ReqHeader:host eq \""+httpHost+"\"")
 	}
