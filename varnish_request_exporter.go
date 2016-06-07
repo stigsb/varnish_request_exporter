@@ -40,12 +40,12 @@ type str_mapping struct {
 }
 
 func main() {
-	// TODO: add support for multiple Varnish instances (-S)
 	var (
 		listenAddress = flag.String("http.port", ":9151", "Host/port for HTTP server")
 		metricsPath   = flag.String("http.metricsurl", "/metrics", "Prometheus metrics path")
 		httpHost      = flag.String("varnish.host", "", "Virtual host to look for in Varnish logs (defaults to all hosts)")
 		mappings      = flag.String("varnish.path-mappings", "", "Path mappings formatted like this: 'regexp->replace regex2->replace2'")
+		instance      = flag.String("varnish.instance", "", "Name of Varnish instance")
 	)
 	flag.Parse()
 
@@ -55,7 +55,7 @@ func main() {
 
 	// Set up 'varnishncsa' pipe
 	cmdName := "varnishncsa"
-	cmdArgs := buildVarnishncsaArgs(*httpHost)
+	cmdArgs := buildVarnishncsaArgs(*httpHost, *instance)
 	log.Infof("Running command: %v %v\n", cmdName, cmdArgs)
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmdReader, err := cmd.StdoutPipe()
@@ -151,7 +151,6 @@ func main() {
 	log.Infof("Received %v, terminating", s)
 	log.Infof("Messages received: %d", msgs)
 
-
 	os.Exit(0)
 }
 
@@ -168,20 +167,23 @@ func parseMappings(input string) (mappings []str_mapping, err error) {
 			err = fmt.Errorf("URL mapping must have two elements separated by \"->\", got \"%s\"", onemapping)
 			return
 		}
-		mappings = append(mappings, str_mapping{ regexp.MustCompile(parts[0]), parts[1] })
+		mappings = append(mappings, str_mapping{regexp.MustCompile(parts[0]), parts[1]})
 	}
 	return
 }
 
-func buildVarnishncsaArgs(httpHost string) (args []string) {
-	args = make([]string, 2, 4)
+func buildVarnishncsaArgs(httpHost string, instance string) (args []string) {
+	args = make([]string, 0, 6)
 	args = append(args, "-F")
 	if len(httpHost) == 0 {
 		args = append(args, "time:%D method=\"%m\" status=%s path=\"%U\" host=\"%{host}i\"")
 	} else {
 		args = append(args, "time:%D method=\"%m\" status=%s path=\"%U\"")
 		args = append(args, "-q")
-		args = append(args, "ReqHeader:host eq \"" + httpHost + "\"")
+		args = append(args, "ReqHeader:host eq \""+httpHost+"\"")
+	}
+	if instance != "" {
+		args = append(args, "-n", instance)
 	}
 	return
 }
