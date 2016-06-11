@@ -4,12 +4,11 @@ Documentation=https://github.com/stigsb/varnish_request_exporter/
 After=varnish.service
 
 [Service]
-Type=forking
 User=nobody
 Group=nobody
 PIDFile=/run/varnish-request-exporter.pid
 EnvironmentFile=/etc/sysconfig/varnish-request-exporter
-ExecStart=/usr/bin/varnish-request-exporter ${CMD_OPTS}
+ExecStart=/usr/bin/varnish-request-exporter $CMD_OPTS
 
 [Install]
 WantedBy=multi-user.target
