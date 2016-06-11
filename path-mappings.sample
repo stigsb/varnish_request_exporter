@@ -1,0 +1,13 @@
+# This file contains path normalization / mapping rules for the
+# Varnish request Prometheus exporter. Each line contains one or two
+# whitespace-separated columns, where the first is a regexp, and the
+# second is the string to replace (defaults to the empty string).
+
+# strip away scheme/host prefix
+^https?://[^/]+
+
+# normalize double slashes
+//+		/
+
+# strip away trailing slashes
+/$

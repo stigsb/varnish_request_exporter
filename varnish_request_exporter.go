@@ -23,7 +23,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
-	"strings"
 	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,7 +33,7 @@ const (
 	namespace = "varnish_request"
 )
 
-type str_mapping struct {
+type path_mappings struct {
 	Pattern     *regexp.Regexp
 	Replacement string
 }
@@ -44,7 +43,7 @@ func main() {
 		listenAddress = flag.String("http.port", ":9151", "Host/port for HTTP server")
 		metricsPath   = flag.String("http.metricsurl", "/metrics", "Prometheus metrics path")
 		httpHost      = flag.String("varnish.host", "", "Virtual host to look for in Varnish logs (defaults to all hosts)")
-		mappings      = flag.String("varnish.path-mappings", "", "Path mappings formatted like this: 'regexp->replace regex2->replace2'")
+		mappingsFile  = flag.String("varnish.path-mappings", "", "Name of file with path mappings")
 		instance      = flag.String("varnish.instance", "", "Name of Varnish instance")
 		befirstbyte   = flag.Bool("varnish.firstbyte", false, "Also export metrics for backend time to first byte")
 	)
@@ -65,7 +64,7 @@ func main() {
 	}
 	scanner := bufio.NewScanner(cmdReader)
 
-	path_mappings, err := parseMappings(*mappings)
+	path_mappings, err := parseMappings(*mappingsFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -155,21 +154,37 @@ func main() {
 	os.Exit(0)
 }
 
-func parseMappings(input string) (mappings []str_mapping, err error) {
-	mappings = make([]str_mapping, 0)
-	str_mappings := strings.Split(input, " ")
-	for i := range str_mappings {
-		onemapping := str_mappings[i]
-		if len(onemapping) == 0 {
+func parseMappings(mappings_file string) (mappings []path_mappings, err error) {
+	mappings = make([]path_mappings, 0)
+	if mappings_file == "" {
+		return
+	}
+	in_file, err := os.Open(mappings_file)
+	if err != nil {
+		log.Fatal(err)
+	}
+	scanner := bufio.NewScanner(in_file)
+	scanner.Split(bufio.ScanLines)
+	comment_re := regexp.MustCompile("(#.*|^\\s+|\\s+$)")
+	split_re := regexp.MustCompile("\\s+")
+	line_no := 0
+	for scanner.Scan() {
+		line_no++
+		line := comment_re.ReplaceAllString(scanner.Text(), "")
+		if len(line) == 0 {
 			continue
 		}
-		parts := strings.Split(onemapping, "->")
-		if len(parts) != 2 {
-			err = fmt.Errorf("URL mapping must have two elements separated by \"->\", got \"%s\"", onemapping)
-			return
+		parts := split_re.Split(line, 2)
+		switch len(parts) {
+		case 1:
+			log.Debugf("mapping strip: %s", parts[0])
+			mappings = append(mappings, path_mappings{regexp.MustCompile(parts[0]), ""})
+		case 2:
+			log.Debugf("mapping replace: %s => %s", parts[0], parts[1])
+			mappings = append(mappings, path_mappings{regexp.MustCompile(parts[0]), parts[1]})
 		}
-		mappings = append(mappings, str_mapping{regexp.MustCompile(parts[0]), parts[1]})
 	}
+	in_file.Close()
 	return
 }
 

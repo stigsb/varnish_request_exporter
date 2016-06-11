@@ -45,7 +45,7 @@ func (l *labelset) Equals(labels []string) bool {
 	return true
 }
 
-func parseMessage(src string, path_mappings []str_mapping) (metrics []metric, labels *labelset, err error) {
+func parseMessage(src string, path_mappings []path_mappings) (metrics []metric, labels *labelset, err error) {
 	metrics = make([]metric, 0)
 	labels = &labelset{
 		Names:  make([]string, 0),

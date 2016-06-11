@@ -1,0 +1,1 @@
+CMD_OPTS="--varnish.firstbyte --varnish.path-mappings=/etc/varnish/request-exporter.mappings"

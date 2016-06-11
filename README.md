@@ -15,24 +15,24 @@ go get github.com/stigsb/varnishncsa_exporter
 All configuration is done with command-line parameters:
 
 ```
-Usage of varnishncsa_exporter:
+Usage of varnish_request_exporter:
   -http.metricsurl string
-        Prometheus metrics path (default "/metrics")
+    	Prometheus metrics path (default "/metrics")
   -http.port string
-        Host/port for HTTP server (default ":9169")
+    	Host/port for HTTP server (default ":9151")
   -log.format value
-        If set use a syslog logger or JSON logging. Example: logger:syslog?appname=bob&local=7 or logger:stdout?json=true. Defaults to stderr.
+    	If set use a syslog logger or JSON logging. Example: logger:syslog?appname=bob&local=7 or logger:stdout?json=true. Defaults to stderr.
   -log.level value
-        Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]. (default info)
+    	Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]. (default info)
+  -varnish.firstbyte
+    	Also export metrics for backend time to first byte
   -varnish.host string
-        Virtual host to look for in Varnish logs (defaults to all hosts)
-  -varnish.path-mappings string
-        Path mappings formatted like this: 'regexp->replace regex2->replace2'
+    	Virtual host to look for in Varnish logs (defaults to all hosts)
   -varnish.instance string
-        Name of Varnish instance. Defaults to hostname.
+    	Name of Varnish instance
+  -varnish.path-mappings string
+    	Name of file with path mappings
 ```
-
-
 
 ## Log format
 
@@ -53,17 +53,35 @@ The Prometheus metrics exported are:
  
 ## Path Mappings
 
-If your URLs (not query string) contain request parameters, you will get a lot of noise in the `path` label.  You can
-normalize the paths by using the `--varnish.path-mappings` flag.
+If your URLs (not query string) contain request parameters, you will
+get a lot of noise in the `path` label, causing unneccessay load on
+Prometheus, as well as making it harder to run queries by path.  You
+can normalize the paths by pointing to a mapping file with the
+`--varnish.path-mappings` flag.
 
-This example changes normalizes paths in the following way:
+The mappings file is a very simple config file with one or two
+whitespace-separated columns; the regexp and replacement string. If
+the replacement is missing, the regexp will be removed from the path.
+Use # for comments.
+
+This is an example path mappings file:
 * replace _/number/_ with _/ID/_
 * remove numbers at the end of the path
 * remove tailing slashes
 * remove duplicated slashes
 
 ```
-varnishncsa_exporter --varnish.path-mappings '/\d+/->/ID/ \d+$-> /$-> //->'
+# normalize /number to /ID
+/\d+             /ID
+
+# make two or more slashes into just one
+//+              /
+
+# example of using group matches
+/([^\.]+?)\.php  /$1
+
+# remove trailing slash
+/$
 ```
 
 ## Attributions
