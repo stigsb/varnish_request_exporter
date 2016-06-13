@@ -189,7 +189,7 @@ func parseMappings(mappings_file string) (mappings []path_mappings, err error) {
 }
 
 func buildVarnishncsaArgs(httpHost string, instance string, befirstbyte bool) (args []string) {
-	format := "method=\"%m\" status=%s path=\"%U\""
+	format := "method=\"%m\" status=%s path=\"%U\" cache=\"%{Varnish:hitmiss}x\""
 	if len(httpHost) == 0 {
 		format += " host=\"%{host}i\""
 	}
