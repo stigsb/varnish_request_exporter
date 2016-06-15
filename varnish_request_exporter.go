@@ -46,6 +46,8 @@ func main() {
 		mappingsFile  = flag.String("varnish.path-mappings", "", "Name of file with path mappings")
 		instance      = flag.String("varnish.instance", "", "Name of Varnish instance")
 		befirstbyte   = flag.Bool("varnish.firstbyte", false, "Also export metrics for backend time to first byte")
+		user_query    = flag.String("varnish.query", "", "VSL query override (defaults to one that is generated")
+		sizes         = flag.Bool("varnish.sizes", false, "Also export metrics for response size")
 	)
 	flag.Parse()
 
@@ -55,7 +57,9 @@ func main() {
 
 	// Set up 'varnishncsa' pipe
 	cmdName := "varnishncsa"
-	cmdArgs := buildVarnishncsaArgs(*httpHost, *instance, *befirstbyte)
+	vslQuery := buildVslQuery(*httpHost, *user_query)
+	varnishFormat := buildVarnishncsaFormat(*befirstbyte, *sizes, *user_query)
+	cmdArgs := buildVarnishncsaArgs(vslQuery, *instance, varnishFormat)
 	log.Infof("Running command: %v %v\n", cmdName, cmdArgs)
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmdReader, err := cmd.StdoutPipe()
@@ -171,7 +175,7 @@ func parseMappings(mappings_file string) (mappings []path_mappings, err error) {
 	for scanner.Scan() {
 		line_no++
 		line := comment_re.ReplaceAllString(scanner.Text(), "")
-		if len(line) == 0 {
+		if line == "" {
 			continue
 		}
 		parts := split_re.Split(line, 2)
@@ -188,17 +192,38 @@ func parseMappings(mappings_file string) (mappings []path_mappings, err error) {
 	return
 }
 
-func buildVarnishncsaArgs(httpHost string, instance string, befirstbyte bool) (args []string) {
-	format := "method=\"%m\" status=%s path=\"%U\" cache=\"%{Varnish:hitmiss}x\" host=\"%{host}i\" time:%D"
+func buildVslQuery(httpHost string, user_query string) (query string) {
+	query = user_query
+	if httpHost != "" {
+		if query != "" {
+			query += " and "
+		}
+		query += "ReqHeader:host eq \"" + httpHost + "\""
+	}
+	return
+}
+
+func buildVarnishncsaFormat(befirstbyte bool, sizes bool, user_format string) (format string) {
+	if user_format != "" {
+		format = user_format + " "
+	}
+	format += "method=\"%m\" status=%s path=\"%U\" cache=\"%{Varnish:hitmiss}x\" host=\"%{host}i\" time:%D"
 	if befirstbyte {
 		format += " time_firstbyte:%{Varnish:time_firstbyte}x"
 	}
+	if sizes {
+		format += " respsize:%b"
+	}
+	return
+}
+
+func buildVarnishncsaArgs(vsl_query string, instance string, format string) (args []string) {
 	args = make([]string, 0, 6)
 	args = append(args, "-F")
 	args = append(args, format)
-	if len(httpHost) > 0 {
+	if vsl_query != "" {
 		args = append(args, "-q")
-		args = append(args, "ReqHeader:host eq \""+httpHost+"\"")
+		args = append(args, vsl_query)
 	}
 	if instance != "" {
 		args = append(args, "-n", instance)

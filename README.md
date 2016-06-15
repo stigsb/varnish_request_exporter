@@ -32,6 +32,10 @@ Usage of varnish_request_exporter:
     	Name of Varnish instance
   -varnish.path-mappings string
     	Name of file with path mappings
+  -varnish.query string
+    	VSL query override (defaults to one that is generated
+  -varnish.sizes
+    	Also export metrics for response size
 ```
 
 ## Log format
