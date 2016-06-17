@@ -8,7 +8,7 @@ User=nobody
 Group=nobody
 PIDFile=/run/varnish-request-exporter.pid
 EnvironmentFile=/etc/sysconfig/varnish-request-exporter
-ExecStart=/usr/bin/varnish-request-exporter $CMD_OPTS
+ExecStart=/usr/bin/varnish-request-exporter $CMD_OPTS --varnish.query=${VARNISH_QUERY} --varnish.host=${VARNISH_HOST}
 
 [Install]
 WantedBy=multi-user.target
