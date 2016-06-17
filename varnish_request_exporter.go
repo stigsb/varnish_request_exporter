@@ -25,6 +25,7 @@ import (
 	"regexp"
 	"syscall"
 
+	"github.com/facebookgo/pidfile"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 )
@@ -54,6 +55,13 @@ func main() {
 	// Listen to signals
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT)
+
+	err := pidfile.Write()
+	if pidfile.IsNotConfigured(err) {
+		log.Info("pidfile not configured")
+	} else if err != nil {
+		log.Fatal(err)
+	}
 
 	// Set up 'varnishncsa' pipe
 	cmdName := "varnishncsa"
