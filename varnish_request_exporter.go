@@ -58,7 +58,7 @@ func main() {
 	// Set up 'varnishncsa' pipe
 	cmdName := "varnishncsa"
 	vslQuery := buildVslQuery(*httpHost, *user_query)
-	varnishFormat := buildVarnishncsaFormat(*befirstbyte, *sizes, *user_query)
+	varnishFormat := buildVarnishncsaFormat(*befirstbyte, *sizes)
 	cmdArgs := buildVarnishncsaArgs(vslQuery, *instance, varnishFormat)
 	log.Infof("Running command: %v %v\n", cmdName, cmdArgs)
 	cmd := exec.Command(cmdName, cmdArgs...)
@@ -203,10 +203,7 @@ func buildVslQuery(httpHost string, user_query string) (query string) {
 	return
 }
 
-func buildVarnishncsaFormat(befirstbyte bool, sizes bool, user_format string) (format string) {
-	if user_format != "" {
-		format = user_format + " "
-	}
+func buildVarnishncsaFormat(befirstbyte bool, sizes bool) (format string) {
 	format += "method=\"%m\" status=%s path=\"%U\" cache=\"%{Varnish:hitmiss}x\" host=\"%{host}i\" time:%D"
 	if befirstbyte {
 		format += " time_firstbyte:%{Varnish:time_firstbyte}x"
