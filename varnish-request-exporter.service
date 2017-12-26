@@ -4,11 +4,12 @@ Documentation=https://github.com/stigsb/varnish_request_exporter/
 After=varnish.service
 
 [Service]
-User=nobody
-Group=nobody
+User=varnish
+Group=varnish
 PIDFile=/run/varnish-request-exporter.pid
 EnvironmentFile=/etc/sysconfig/varnish-request-exporter
 ExecStart=/usr/bin/varnish-request-exporter $CMD_OPTS --varnish.query=${VARNISH_QUERY} --varnish.host=${VARNISH_HOST}
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
