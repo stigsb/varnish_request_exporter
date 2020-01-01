@@ -1,4 +1,4 @@
-// Copyright 2016 Markus Lindenberg, Stig Bakken
+// Copyright 2016-2020 Markus Lindenberg, Stig Bakken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ func (l *labelset) Equals(labels []string) bool {
 	return true
 }
 
-func parseMessage(src string, path_mappings []path_mappings) (metrics []metric, labels *labelset, err error) {
+func parseMessage(src string, path_mappings []pathMapping) (metrics []metric, labels *labelset, err error) {
 	metrics = make([]metric, 0)
 	labels = &labelset{
 		Names:  make([]string, 0),
